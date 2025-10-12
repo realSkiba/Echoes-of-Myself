@@ -56,78 +56,31 @@ Echoes of Myself is a 3D puzzle-stealth game where your past actions become NPCs
 
 ## Assignment 2
 ### Guard NPC FSM
-#### FSM Diagram
-        (timer idleTime)
-Idle  ------------------>  Patrol  --(player seen)-->  Chase
- ^                                                       |
- |                                                       |  (lost sight ≥ 1.5s) 
- |                                                       v
- +-----<--(arrive at lastKnown OR search timeout)--  Search  <--+
-                      ^                                      |   |
-                      +-----------(lost sight)---------------+   |
-#### States (behavior & visible cues)
+A transform-driven guard that navigates between waypoints (no NavMesh) and reacts to the player via FOV + distance checks. The guard demonstrates ≥3 states with distinct speeds/colors and deterministic transitions.
 
-Idle
-Behavior: Stands still for idleTime seconds.
-Cues: Material gray, speed 0.
+### States
 
-Patrol
-Behavior: Moves between waypoints[wpIndex] in a loop; advances when planar distance ≤ arriveDist or a safety timeout elapses.
-Cues: Material cyan, speed = patrolSpeed.
+Idle: Stand still for idleTime; color = gray; speed = 0.
 
-Chase
-Behavior: Moves toward player while the player is within FOV (fovDegrees/2) and sightDistance, with optional raycast occlusion. If sight is lost for ≥ 1.5s, switches to Search using lastKnownPos.
-Cues: Material red, speed = chaseSpeed.
+Patrol: Move between waypoints in a loop; advance when planar distance ≤ arriveDist; color = cyan; speed = patrolSpeed.
 
-Search
-Behavior: Moves to lastKnownPos; if it arrives (planar) or the search timer expires, returns to Patrol. Seeing the player at any time returns to Chase.
-Cues: Material yellow, speed = searchSpeed.
+Chase: Move toward player while visible (within sightDistance and inside fovDegrees with clear LOS); color = red; speed = chaseSpeed.
 
-Transitions (conditions)
+Search: Move to lastKnownPos after losing sight; end when planar distance ≤ arriveDist or timeout; color = yellow; speed = searchSpeed.
 
-Idle → Patrol: Time.time ≥ stateEnd (idle timer).
+### Transitions
 
-Patrol → Chase: CanSeePlayer() == true.
+Idle → Patrol: Idle timer expires.
 
-Patrol → Patrol(next waypoint): PlanarDistance(guard, waypoint) ≤ arriveDist OR segment timeout.
+Patrol → Chase: CanSeePlayer() becomes true.
 
-Chase → Search: CanSeePlayer() == false for ≥ 1.5s (lost timer).
+Patrol → Patrol (next waypoint): Reached current waypoint (planar) or segment timeout.
 
-Chase → Chase (stay): CanSeePlayer() == true.
+Chase → Search: CanSeePlayer() false for ≥ 1.5s (lost timer).
 
-Search → Patrol: PlanarDistance(guard, lastKnownPos) ≤ arriveDist OR search timeout.
+Search → Patrol: Reached lastKnownPos (planar) or search timeout.
 
-Any → Chase: If CanSeePlayer() == true (edge-case guard).
-
-Detection rule (CanSeePlayer)
-
-Range: distance ≤ sightDistance.
-
-FOV: Vector3.Angle(forward, toPlayer) ≤ fovDegrees * 0.5.
-
-Occlusion (optional): raycast from eye to player; require clear hit when occluders LayerMask is set.
-
-Tuning (example values used)
-
-idleTime = 2.0
-
-arriveDist = 0.25–0.5 (planar / XZ only)
-
-patrolSpeed = 2.0, searchSpeed = 2.2, chaseSpeed = 4.0
-
-sightDistance = 12–20, fovDegrees = 90–120 (wider for demo)
-
-Visible state colors: Idle=gray, Patrol=cyan, Chase=red, Search=yellow
-
-Grader visibility checklist
-
-Guard loops waypoints (clearly moves past WP0 to WP1… and wraps).
-
-Approaching in front triggers Chase (red); running out of view causes Search (yellow); search completes and returns to Patrol (cyan).
-
-Color and speed differences make states obvious on video.
-
-(Optional: a runtime vision cone is rendered by VisionConeMesh for clarity; color shifts to red when the player is seen.)
+Any → Chase: If CanSeePlayer() becomes true.
 
 
 
