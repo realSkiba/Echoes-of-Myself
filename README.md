@@ -54,7 +54,80 @@ Echoes of Myself is a 3D puzzle-stealth game where your past actions become NPCs
 - Members: Jacob Skiba (20361187)
 - Team Roles: Jacob will handle everything in this group, since this is a solo project.
 
+## Assignment 2
+### Guard NPC FSM
+#### FSM Diagram
+        (timer idleTime)
+Idle  ------------------>  Patrol  --(player seen)-->  Chase
+ ^                                                       |
+ |                                                       |  (lost sight ≥ 1.5s) 
+ |                                                       v
+ +-----<--(arrive at lastKnown OR search timeout)--  Search  <--+
+                      ^                                      |   |
+                      +-----------(lost sight)---------------+   |
+#### States (behavior & visible cues)
 
+Idle
+Behavior: Stands still for idleTime seconds.
+Cues: Material gray, speed 0.
+
+Patrol
+Behavior: Moves between waypoints[wpIndex] in a loop; advances when planar distance ≤ arriveDist or a safety timeout elapses.
+Cues: Material cyan, speed = patrolSpeed.
+
+Chase
+Behavior: Moves toward player while the player is within FOV (fovDegrees/2) and sightDistance, with optional raycast occlusion. If sight is lost for ≥ 1.5s, switches to Search using lastKnownPos.
+Cues: Material red, speed = chaseSpeed.
+
+Search
+Behavior: Moves to lastKnownPos; if it arrives (planar) or the search timer expires, returns to Patrol. Seeing the player at any time returns to Chase.
+Cues: Material yellow, speed = searchSpeed.
+
+Transitions (conditions)
+
+Idle → Patrol: Time.time ≥ stateEnd (idle timer).
+
+Patrol → Chase: CanSeePlayer() == true.
+
+Patrol → Patrol(next waypoint): PlanarDistance(guard, waypoint) ≤ arriveDist OR segment timeout.
+
+Chase → Search: CanSeePlayer() == false for ≥ 1.5s (lost timer).
+
+Chase → Chase (stay): CanSeePlayer() == true.
+
+Search → Patrol: PlanarDistance(guard, lastKnownPos) ≤ arriveDist OR search timeout.
+
+Any → Chase: If CanSeePlayer() == true (edge-case guard).
+
+Detection rule (CanSeePlayer)
+
+Range: distance ≤ sightDistance.
+
+FOV: Vector3.Angle(forward, toPlayer) ≤ fovDegrees * 0.5.
+
+Occlusion (optional): raycast from eye to player; require clear hit when occluders LayerMask is set.
+
+Tuning (example values used)
+
+idleTime = 2.0
+
+arriveDist = 0.25–0.5 (planar / XZ only)
+
+patrolSpeed = 2.0, searchSpeed = 2.2, chaseSpeed = 4.0
+
+sightDistance = 12–20, fovDegrees = 90–120 (wider for demo)
+
+Visible state colors: Idle=gray, Patrol=cyan, Chase=red, Search=yellow
+
+Grader visibility checklist
+
+Guard loops waypoints (clearly moves past WP0 to WP1… and wraps).
+
+Approaching in front triggers Chase (red); running out of view causes Search (yellow); search completes and returns to Patrol (cyan).
+
+Color and speed differences make states obvious on video.
+
+(Optional: a runtime vision cone is rendered by VisionConeMesh for clarity; color shifts to red when the player is seen.)
 
 
 
