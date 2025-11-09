@@ -16,13 +16,17 @@ public class GuardFSM : MonoBehaviour {
     public float chaseSpeed  = 4f;
     public float searchSpeed = 2.2f;
     public float arriveDist = 0.25f;
-    public float catchDistance = 1.0f;   // distance at which guard catches player
+    public float catchDistance = 1.0f; 
 
 
     [Header("Detection")]
     public float sightDistance = 12f;
     public float fovDegrees    = 90f;
     public LayerMask occluders;     // walls; leave 0 if you don’t use it
+
+    [Header("Patrol")]
+    public bool randomPatrol = true;
+
 
     // runtime
     int wpIndex = 0;
@@ -42,6 +46,11 @@ public class GuardFSM : MonoBehaviour {
         if (agent) {
             agent.updateRotation = true;
             agent.updatePosition = true;
+        }
+
+        // start from a random waypoint, if we have any
+        if (waypoints != null && waypoints.Length > 0) {
+            wpIndex = Random.Range(0, waypoints.Length);
         }
         To(State.Idle);
     }
@@ -67,20 +76,20 @@ public class GuardFSM : MonoBehaviour {
                 agent.isStopped = false;
 
                 if (waypoints != null && waypoints.Length > 0) {
-                    // assign first destination if none
+                    // if we don't have a path yet, ensure we're going somewhere
                     if (!agent.hasPath && !agent.pathPending) {
                         agent.SetDestination(waypoints[wpIndex].position);
                     }
 
-                    // reached current waypoint?
+                    // when we reach the current waypoint, pick a random next one
                     if (!agent.pathPending && agent.remainingDistance <= arriveDist) {
-                        wpIndex = (wpIndex + 1) % waypoints.Length;
-                        agent.SetDestination(waypoints[wpIndex].position);
+                        PickNextWaypoint();
                     }
                 }
 
                 if (seen) To(State.Chase);
                 break;
+
 
             case State.Chase:
                 agent.speed = chaseSpeed;
@@ -122,7 +131,8 @@ public class GuardFSM : MonoBehaviour {
         }
     }
 
-    bool CanSeePlayer() {
+    bool CanSeePlayer()
+    {
         if (!player) return false;
 
         // from = guard "eye" position
@@ -140,7 +150,8 @@ public class GuardFSM : MonoBehaviour {
             return false;
 
         // 3) line-of-sight check: raycast hits the FIRST collider between us
-        if (Physics.Raycast(from, toPlayer.normalized, out RaycastHit hit, sightDistance)) {
+        if (Physics.Raycast(from, toPlayer.normalized, out RaycastHit hit, sightDistance))
+        {
             // Can only see player if the ray hits the player first
             return hit.transform == player;
         }
@@ -149,6 +160,27 @@ public class GuardFSM : MonoBehaviour {
         return false;
 
     }
+    
+    void PickNextWaypoint() {
+    if (waypoints == null || waypoints.Length == 0 || agent == null) return;
+
+    if (randomPatrol) {
+        // pick a random waypoint index different from the current one
+        int next = wpIndex;
+        if (waypoints.Length > 1) {
+            while (next == wpIndex) {
+                next = Random.Range(0, waypoints.Length);
+            }
+        }
+        wpIndex = next;
+    } else {
+        // fallback: simple loop
+        wpIndex = (wpIndex + 1) % waypoints.Length;
+    }
+
+    agent.SetDestination(waypoints[wpIndex].position);
+    }
+
 
     void To(State s) {
         state = s;
@@ -157,7 +189,15 @@ public class GuardFSM : MonoBehaviour {
                 stateEnd = Time.time + idleTime;
                 break;
             case State.Patrol:
-                // reset waypoint timer etc.
+                if (waypoints != null && waypoints.Length > 0) {
+                    agent.isStopped = false;
+                    agent.speed = patrolSpeed;
+
+                    // If we don't have a path yet, start moving toward current index
+                    if (!agent.hasPath && !agent.pathPending) {
+                        agent.SetDestination(waypoints[wpIndex].position);
+                    }
+                }
                 break;
             case State.Chase:
                 break;
