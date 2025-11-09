@@ -15,7 +15,9 @@ public class GuardFSM : MonoBehaviour {
     public float patrolSpeed = 2f;
     public float chaseSpeed  = 4f;
     public float searchSpeed = 2.2f;
-    public float arriveDist  = 0.25f;
+    public float arriveDist = 0.25f;
+    public float catchDistance = 1.0f;   // distance at which guard catches player
+
 
     [Header("Detection")]
     public float sightDistance = 12f;
@@ -85,11 +87,23 @@ public class GuardFSM : MonoBehaviour {
                 agent.isStopped = false;
                 agent.SetDestination(player.position);
 
+                // check catch
+                float dist = Vector3.Distance(transform.position, player.position);
+                if (dist <= catchDistance) {
+                    // Caught the player!
+                    if (GameManager.Instance != null) {
+                        GameManager.Instance.GameOver();
+                    }
+                    return;    // stop processing this frame
+                }
+
+                // lose sight logic
                 if (!seen) {
                     lostTimer += Time.deltaTime;
                     if (lostTimer > 1.5f) To(State.Search);
                 }
                 break;
+
 
             case State.Search:
                 agent.speed = searchSpeed;
