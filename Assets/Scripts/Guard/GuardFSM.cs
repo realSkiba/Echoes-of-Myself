@@ -111,27 +111,29 @@ public class GuardFSM : MonoBehaviour {
     bool CanSeePlayer() {
         if (!player) return false;
 
+        // from = guard "eye" position
         Vector3 from = eye ? eye.position : transform.position + Vector3.up * 1.2f;
         Vector3 toPlayer = player.position - from;
 
-        // range
+        // 1) range check
         if (toPlayer.sqrMagnitude > sightDistance * sightDistance)
             return false;
 
-        // FOV
+        // 2) FOV check
         Vector3 forward = eye ? eye.forward : transform.forward;
         float angle = Vector3.Angle(forward, toPlayer);
         if (angle > fovDegrees * 0.5f)
             return false;
 
-        // optional occlusion check
-        if (occluders.value != 0) {
-            if (Physics.Raycast(from, toPlayer.normalized, out RaycastHit hit, sightDistance, occluders)) {
-                return hit.transform == player;
-            }
+        // 3) line-of-sight check: raycast hits the FIRST collider between us
+        if (Physics.Raycast(from, toPlayer.normalized, out RaycastHit hit, sightDistance)) {
+            // Can only see player if the ray hits the player first
+            return hit.transform == player;
         }
 
-        return true;
+        // nothing hit (e.g., no colliders) → treat as not seeing
+        return false;
+
     }
 
     void To(State s) {
