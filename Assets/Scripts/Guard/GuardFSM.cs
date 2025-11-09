@@ -30,6 +30,7 @@ public class GuardFSM : MonoBehaviour {
 
     // runtime
     int wpIndex = 0;
+    int lastWpIndex = -1;
     float stateEnd = 0f;
     Vector3 lastKnownPos;
     float lostTimer = 0f;
@@ -162,24 +163,36 @@ public class GuardFSM : MonoBehaviour {
     }
     
     void PickNextWaypoint() {
-    if (waypoints == null || waypoints.Length == 0 || agent == null) return;
+        if (waypoints == null || waypoints.Length == 0 || agent == null) return;
 
-    if (randomPatrol) {
-        // pick a random waypoint index different from the current one
-        int next = wpIndex;
-        if (waypoints.Length > 1) {
-            while (next == wpIndex) {
-                next = Random.Range(0, waypoints.Length);
-            }
+        int count = waypoints.Length;
+        int current = wpIndex;
+        int next = current;
+
+        if (count == 1) {
+            // only one waypoint, nothing to pick
+            wpIndex = 0;
+        } else if (count == 2) {
+            // with 2 points you *must* bounce 0 -> 1 -> 0
+            // can't avoid 1 -> 2 -> 1 pattern in this case
+            next = (current == 0) ? 1 : 0;
+            lastWpIndex = current;
+            wpIndex = next;
+        } else {
+            // count >= 3: avoid current AND lastWpIndex
+            int safety = 0;
+            do {
+                next = Random.Range(0, count);
+                safety++;
+            } while ((next == current || next == lastWpIndex) && safety < 50);
+
+            lastWpIndex = current;
+            wpIndex = next;
         }
-        wpIndex = next;
-    } else {
-        // fallback: simple loop
-        wpIndex = (wpIndex + 1) % waypoints.Length;
+
+        agent.SetDestination(waypoints[wpIndex].position);
     }
 
-    agent.SetDestination(waypoints[wpIndex].position);
-    }
 
 
     void To(State s) {
