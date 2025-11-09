@@ -47,6 +47,8 @@ public class GuardFSM : MonoBehaviour {
         if (agent) {
             agent.updateRotation = true;
             agent.updatePosition = true;
+            agent.autoBraking = false;
+            agent.stoppingDistance = 0f;
         }
 
         // start from a random waypoint, if we have any
