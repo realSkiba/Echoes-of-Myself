@@ -1,62 +1,78 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 using UnityEngine.SceneManagement;
 
-public class GameManager : MonoBehaviour {
+public class GameManager : MonoBehaviour
+{
     public static GameManager Instance;
 
     [Header("UI")]
-    public GameObject gameOverScreen;   // assign in Inspector
+    public GameObject gameOverScreen;
 
     bool isGameOver = false;
 
-    void Awake() {
-        if (Instance != null && Instance != this) {
+    void Awake()
+    {
+        // simple singleton
+        if (Instance != null && Instance != this)
+        {
             Destroy(gameObject);
             return;
         }
         Instance = this;
-        // Optional: persist across scenes
-        // DontDestroyOnLoad(gameObject);
 
         if (gameOverScreen) gameOverScreen.SetActive(false);
     }
 
-    void Update() {
+    void Update()
+    {
         if (!isGameOver) return;
 
-        // allow restart with R
-        if (Input.GetKeyDown(KeyCode.R)) {
-            // reset time scale in case we changed it
+        // Restart on R
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            // unpause
             Time.timeScale = 1f;
+
+            // shut down any running network session
+            if (NetworkManager.Singleton != null &&
+                (NetworkManager.Singleton.IsHost ||
+                 NetworkManager.Singleton.IsServer ||
+                 NetworkManager.Singleton.IsClient))
+            {
+                NetworkManager.Singleton.Shutdown();
+            }
+
+            // reload scene fresh
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }
 
-    public void GameOver() {
+    public void GameOver()
+    {
         if (isGameOver) return;
         isGameOver = true;
 
-        // show UI
         if (gameOverScreen) gameOverScreen.SetActive(true);
-
-        // stop time OR just stop movement – here we pause time
         Time.timeScale = 0f;
 
-        // disable player control
+        // disable player controls
         var player = GameObject.FindGameObjectWithTag("Player");
-        if (player) {
-            var pc = player.GetComponent<PlayerController>();
-            if (pc) pc.enabled = false;
+        if (player)
+        {
+            var netPc = player.GetComponent<NetPlayerController>();
+            if (netPc) netPc.enabled = false;
+
             var interactor = player.GetComponent<Interactor>();
             if (interactor) interactor.enabled = false;
+
             var echoRec = player.GetComponent<EchoRecorder>();
             if (echoRec) echoRec.enabled = false;
         }
 
-        // optionally stop guard logic too
-        foreach (var guard in FindObjectsOfType<GuardFSM>()) {
+        // stop guards
+        foreach (var guard in FindObjectsOfType<GuardFSM>())
+        {
             guard.enabled = false;
             var agent = guard.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if (agent) agent.isStopped = true;
@@ -65,4 +81,3 @@ public class GameManager : MonoBehaviour {
         Debug.Log("GAME OVER");
     }
 }
-
