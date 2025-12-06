@@ -122,21 +122,3 @@ https://drive.google.com/file/d/16pgPByU6Dw9MbR-megUWptXaZk4-OC3_/view?usp=drive
 
 https://drive.google.com/file/d/1U_StEd2vzK1IpmhT8BGcYnotySJLtXLQ/view?usp=drive_link
 
-
-## Assignment 4 - Multiplayer
-
-### Instructions for Setup/Run
-
-1. Build the Game
-   - Go to File -> Build Settings
-   - Select SampleScene
-   - Click Build
-2. Run the Editor Version
-   - Press Play in Unity Editor
-   - In the in-game UI, clikc Host
-   - Move around
-3. Connect the Client
-   - Open the built game executable
-   - Click Client
-   - The client connects to the Host and spawnas thier owne controabble character
-   - Both players appear now in the same session
